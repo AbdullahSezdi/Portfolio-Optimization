@@ -515,39 +515,49 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                     legend=dict(
                         yanchor="top",
                         y=0.99,
-                        xanchor="left",
-                        x=0.01,
-                        bgcolor='rgba(0,0,0,0.5)',
+                        xanchor="right",
+                        x=0.99,
+                        bgcolor='rgba(0,0,0,0.7)',
                         bordercolor='rgba(255,255,255,0.2)',
-                        borderwidth=1
+                        borderwidth=1,
+                        font=dict(size=12)
                     ),
                     annotations=[
                         dict(
                             text=f"<b>Portföy Getirisi:</b> {(portfolio_norm.iloc[-1]-1)*100:.1f}%",
                             xref="paper", yref="paper",
-                            x=0.01, y=0.95,
+                            x=0.02, y=0.98,
                             showarrow=False,
-                            font=dict(color='#00ff00', size=12),
+                            font=dict(color='#00ff00', size=13),
                             bgcolor='rgba(0,0,0,0.7)',
-                            borderpad=4
+                            bordercolor='rgba(0,255,0,0.3)',
+                            borderwidth=1,
+                            borderpad=6,
+                            align='left'
                         ),
                         dict(
                             text=f"<b>BIST-100 Getirisi:</b> {(bist100_norm.iloc[-1]-1)*100:.1f}%",
                             xref="paper", yref="paper",
-                            x=0.01, y=0.90,
+                            x=0.02, y=0.91,
                             showarrow=False,
-                            font=dict(color='#ff4444', size=12),
+                            font=dict(color='#ff4444', size=13),
                             bgcolor='rgba(0,0,0,0.7)',
-                            borderpad=4
+                            bordercolor='rgba(255,0,0,0.3)',
+                            borderwidth=1,
+                            borderpad=6,
+                            align='left'
                         ),
                         dict(
                             text=f"<b>BIST-30 Getirisi:</b> {(bist30_norm.iloc[-1]-1)*100:.1f}%",
                             xref="paper", yref="paper",
-                            x=0.01, y=0.85,
+                            x=0.02, y=0.84,
                             showarrow=False,
-                            font=dict(color='#4444ff', size=12),
+                            font=dict(color='#4444ff', size=13),
                             bgcolor='rgba(0,0,0,0.7)',
-                            borderpad=4
+                            bordercolor='rgba(0,0,255,0.3)',
+                            borderwidth=1,
+                            borderpad=6,
+                            align='left'
                         )
                     ]
                 )
