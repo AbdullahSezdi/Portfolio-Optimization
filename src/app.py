@@ -192,12 +192,24 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
             # Getirileri hesapla
             returns = pd.DataFrame()
             for stock in data:
-                # Eğer Adj Close yoksa Close kullan
-                if 'Adj Close' in data[stock].columns:
-                    price_data = data[stock]['Adj Close']
-                else:
-                    price_data = data[stock]['Close']
-                returns[stock] = price_data.pct_change()
+                try:
+                    # Eğer Adj Close yoksa Close kullan
+                    if 'Adj Close' in data[stock].columns:
+                        price_data = data[stock]['Adj Close']
+                    else:
+                        price_data = data[stock]['Close']
+                    
+                    # Fiyat verisi Series değilse (yani DataFrame ise) ilk sütunu al
+                    if isinstance(price_data, pd.DataFrame):
+                        price_data = price_data.iloc[:, 0]
+                    
+                    # Getiriyi hesapla ve DataFrame'e ekle
+                    stock_return = price_data.pct_change()
+                    returns[stock] = stock_return
+                except Exception as e:
+                    st.warning(f"{stock} hissesi için getiri hesaplanamadı: {str(e)}")
+                    continue
+
             returns = returns.dropna()
 
             if returns.empty:
@@ -220,55 +232,8 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
             # Ağırlıkları session state'e kaydet
             st.session_state.weights = weights
             
-            # Sonuçları göster
-            st.header("📊 Optimizasyon Sonuçları")
-            
-            # Portföy metriklerini göster
-            metrics = optimizer.calculate_portfolio_metrics(weights)
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Yıllık Getiri", f"{metrics['Yıllık Getiri']:.1%}")
-            with col2:
-                st.metric("Yıllık Volatilite", f"{metrics['Yıllık Volatilite']:.1%}")
-            with col3:
-                st.metric("Sharpe Oranı", f"{metrics['Sharpe Oranı']:.2f}")
-            with col4:
-                st.metric("Sortino Oranı", f"{metrics['Sortino Oranı']:.2f}")
-
-            # Risk analizi
-            st.subheader("🛡️ Risk Analizi")
-            try:
-                risk_manager = RiskManager(returns, weights)
-                risk_metrics = risk_manager.calculate_risk_metrics()
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric(
-                        "Value at Risk (95%)",
-                        f"{risk_metrics['var_95']:.2%}",
-                        help="95% güven aralığında maksimum kayıp"
-                    )
-                    
-                with col2:
-                    st.metric(
-                        "Conditional VaR (95%)",
-                        f"{risk_metrics['cvar_95']:.2%}",
-                        help="VaR'ı aşan kayıpların ortalaması"
-                    )
-                    
-                with col3:
-                    st.metric(
-                        "Maximum Drawdown",
-                        f"{risk_metrics['max_drawdown']:.2%}",
-                        help="En yüksek değerden en düşük değere maksimum düşüş"
-                    )
-            except Exception as e:
-                st.error(f"Risk analizi hesaplanırken hata oluştu: {str(e)}")
-
             # Portföy dağılımını göster
-            st.subheader("Optimal Portföy Dağılımı")
+            st.subheader("📈 Optimal Portföy Dağılımı")
             
             # Yatırım tutarı girişi
             if 'investment_amount' not in st.session_state:
@@ -293,9 +258,9 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                 st.markdown('<div class="column-gap">', unsafe_allow_html=True)
                 # Portföy pasta grafiği
                 fig_pie = px.pie(values=weights[weights > 0.001],
-                               names=weights[weights > 0.001].index,
-                               title="Hisse Ağırlıkları")
-                st.plotly_chart(fig_pie, use_container_width=True, key="pie_chart_1")
+                                names=weights[weights > 0.001].index,
+                                title="Hisse Ağırlıkları")
+                st.plotly_chart(fig_pie, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             with col2:
@@ -307,13 +272,43 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                 st.markdown("""
                 <style>
                 .dataframe {
-                    margin-top: 20px;
-                    margin-bottom: 20px;
+                    margin-top: 10px;
+                    margin-bottom: 10px;
                     margin-left: 40px;
                     width: calc(100% - 40px);
                 }
                 .column-gap { 
-                    padding: 0 30px;
+                    padding: 0 15px;
+                }
+                /* Başlıklar arası boşluk */
+                h1, h2, h3, h4 {
+                    margin-top: 20px !important;
+                    margin-bottom: 10px !important;
+                    padding-top: 5px !important;
+                }
+                /* Bölümler arası boşluk */
+                .section-gap {
+                    margin-top: 25px !important;
+                    margin-bottom: 15px !important;
+                }
+                /* Metrikler arası boşluk */
+                .metrics-container {
+                    margin-top: 15px !important;
+                    margin-bottom: 15px !important;
+                }
+                /* Metrik kartları arası boşluk */
+                .stMetric {
+                    margin-top: 5px !important;
+                    margin-bottom: 5px !important;
+                }
+                /* Markdown içerik boşlukları */
+                .markdown-text-container {
+                    margin-top: 10px !important;
+                    margin-bottom: 10px !important;
+                }
+                .markdown-text-container p {
+                    margin-top: 5px !important;
+                    margin-bottom: 5px !important;
                 }
                 </style>
                 """, unsafe_allow_html=True)
@@ -341,7 +336,27 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                         unsafe_allow_html=True
                     )
 
+            # Sonuçları göster
+            st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
+            st.header("📊 Optimizasyon Sonuçları")
+            
+            # Portföy metriklerini göster
+            st.markdown('<div class="metrics-container">', unsafe_allow_html=True)
+            metrics = optimizer.calculate_portfolio_metrics(weights)
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Yıllık Getiri", f"{metrics['Yıllık Getiri']:.1%}")
+            with col2:
+                st.metric("Yıllık Volatilite", f"{metrics['Yıllık Volatilite']:.1%}")
+            with col3:
+                st.metric("Sharpe Oranı", f"{metrics['Sharpe Oranı']:.2f}")
+            with col4:
+                st.metric("Sortino Oranı", f"{metrics['Sortino Oranı']:.2f}")
+            st.markdown('</div>', unsafe_allow_html=True)
+
             # Backtest sonuçları
+            st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
             st.subheader("📈 Backtest Sonuçları")
             
             # Backtest yap
@@ -352,93 +367,21 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                 rebalancing_period=rebalancing_period,
                 stop_loss=stop_loss_level/100 if use_stop_loss else None
             )
-            
-            # BIST endekslerini al ve getirileri hesapla
-            try:
-                bist100 = yf.download('XU100.IS', start=start_date, end=end_date, progress=False)
-                bist30 = yf.download('XU030.IS', start=start_date, end=end_date, progress=False)
-                
-                if not bist100.empty and len(bist100) > 0 and not bist30.empty and len(bist30) > 0:
-                    # Denomilasyon düzeltmesi
-                    denomilasyon_tarihi = pd.Timestamp('2020-07-27')
-                    bist100_values = bist100['Close'].copy()
-                    bist30_values = bist30['Close'].copy()
-                    
-                    if len(bist100_values) > 0 and len(bist30_values) > 0:
-                        # Denomilasyon düzeltmesi
-                        mask100 = bist100_values.index < denomilasyon_tarihi
-                        mask30 = bist30_values.index < denomilasyon_tarihi
-                        
-                        if any(mask100):
-                            bist100_values[mask100] = bist100_values[mask100] / 100
-                        if any(mask30):
-                            bist30_values[mask30] = bist30_values[mask30] / 100
-                        
-                        # Endeks getirilerini hesapla
-                        if len(bist100_values) > 1 and len(bist30_values) > 1:
-                            bist100_return = ((bist100_values.iloc[-1] / bist100_values.iloc[0]) - 1) * 100
-                            bist30_return = ((bist30_values.iloc[-1] / bist30_values.iloc[0]) - 1) * 100
-                        else:
-                            bist100_return = 0
-                            bist30_return = 0
-                    else:
-                        bist100_return = 0
-                        bist30_return = 0
-                else:
-                    bist100_return = 0
-                    bist30_return = 0
-            except Exception as e:
-                bist100_return = 0
-                bist30_return = 0
-                st.warning(f"Endeks verileri alınamadı: {str(e)}")
-            
-            # Backtest metriklerini göster
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                total_return = backtest['Toplam Getiri']
-                annual_return = backtest['Yıllık Getiri']
-                if isinstance(total_return, pd.Series):
-                    total_return = float(total_return.iloc[0])
-                if isinstance(annual_return, pd.Series):
-                    annual_return = float(annual_return.iloc[0])
-                st.metric(
-                    "Portföy Toplam Getiri",
-                    f"{total_return*100:.1f}%",
-                    f"{annual_return*100:.1f}% (Yıllık)"
-                )
-            with col2:
-                bist100_return_val = bist100_return if isinstance(bist100_return, (int, float)) else bist100_return.iloc[0]
-                st.metric(
-                    "BIST-100 Getiri",
-                    f"{bist100_return_val:.1f}%",
-                    f"{71.3}% (Yıllık)"
-                )
-            with col3:
-                bist30_return_val = bist30_return if isinstance(bist30_return, (int, float)) else bist30_return.iloc[0]
-                st.metric(
-                    "BIST-30 Getiri",
-                    f"{bist30_return_val:.1f}%",
-                    f"{71.3}% (Yıllık)"
-                )
-            with col4:
-                max_drawdown = backtest['Maksimum Drawdown']
-                if isinstance(max_drawdown, pd.Series):
-                    max_drawdown = float(max_drawdown.iloc[0])
-                st.metric(
-                    "Maksimum Drawdown",
-                    f"{max_drawdown*100:.1f}%"
-                )
 
-            # Karşılaştırmalı performans grafiği
+            # BIST verilerini al ve getirileri hesapla
             try:
+                portfolio_values = pd.Series(backtest['Günlük Değerler']).astype(float)
+                portfolio_values.index = pd.to_datetime(portfolio_values.index)
+                
                 # BIST endekslerini al
                 bist100 = yf.download('XU100.IS', start=start_date, end=end_date, progress=False)
                 bist30 = yf.download('XU030.IS', start=start_date, end=end_date, progress=False)
-
+                
+                # Varsayılan değerleri tanımla
+                bist100_return = 0
+                bist30_return = 0
+                
                 if not bist100.empty and not bist30.empty:
-                    portfolio_values = pd.Series(backtest['Günlük Değerler']).astype(float)
-                    portfolio_values.index = pd.to_datetime(portfolio_values.index)
-                    
                     # Endeks verilerini hazırla
                     bist100_values = pd.Series(bist100['Close'].values.squeeze(), index=bist100.index)
                     bist30_values = pd.Series(bist30['Close'].values.squeeze(), index=bist30.index)
@@ -447,11 +390,6 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                     denomilasyon_tarihi = pd.Timestamp('2020-07-27')
                     bist100_values[bist100_values.index < denomilasyon_tarihi] = bist100_values[bist100_values.index < denomilasyon_tarihi] / 100
                     bist30_values[bist30_values.index < denomilasyon_tarihi] = bist30_values[bist30_values.index < denomilasyon_tarihi] / 100
-                    
-                    # Tüm indeksleri datetime'a çevir
-                    portfolio_values.index = pd.to_datetime(portfolio_values.index)
-                    bist100_values.index = pd.to_datetime(bist100_values.index)
-                    bist30_values.index = pd.to_datetime(bist30_values.index)
                     
                     # Ortak tarih aralığını bul
                     common_dates = portfolio_values.index.intersection(bist100_values.index).intersection(bist30_values.index)
@@ -465,147 +403,196 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
                     portfolio_norm = portfolio_values / portfolio_values.iloc[0]
                     bist100_norm = bist100_values / bist100_values.iloc[0]
                     bist30_norm = bist30_values / bist30_values.iloc[0]
+                    
+                    # Getirileri hesapla
+                    bist100_return = (bist100_norm.iloc[-1] - 1) * 100
+                    bist30_return = (bist30_norm.iloc[-1] - 1) * 100
+            except Exception as e:
+                st.warning(f"BIST verileri alınırken hata oluştu: {str(e)}")
+                bist100_return = 0
+                bist30_return = 0
 
-                    # Karşılaştırmalı performans grafiği
-                    st.subheader("Karşılaştırmalı Performans Analizi")
-                    fig_comp = go.Figure()
-                    
-                    # Portföy çizgisi
-                    fig_comp.add_trace(go.Scatter(
-                        x=portfolio_norm.index,
-                        y=portfolio_norm,
-                        name='Portföy',
-                        line=dict(color='#00ff00', width=2.5),
-                        fill='tonexty',
-                        fillcolor='rgba(0, 255, 0, 0.05)'
-                    ))
-                    
-                    # BIST-100 çizgisi
-                    fig_comp.add_trace(go.Scatter(
-                        x=bist100_norm.index,
-                        y=bist100_norm,
-                        name='BIST-100',
-                        line=dict(color='#ff4444', width=1.5, dash='dot')
-                    ))
-                    
-                    # BIST-30 çizgisi
-                    fig_comp.add_trace(go.Scatter(
-                        x=bist30_norm.index,
-                        y=bist30_norm,
-                        name='BIST-30',
-                        line=dict(color='#4444ff', width=1.5, dash='dot')
-                    ))
-                    
-                    # Grafik düzeni
-                    fig_comp.update_layout(
-                        template='plotly_dark',
-                        title=dict(
-                            text='Portföy vs Endeks Performansı',
-                            x=0.5,
-                            y=0.95,
-                            xanchor='center',
-                            yanchor='top',
-                            font=dict(size=20)
+            # Backtest metrikleri
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                portfolio_return = backtest['Toplam Getiri']
+                if isinstance(portfolio_return, pd.Series):
+                    portfolio_return = float(portfolio_return.iloc[0])
+                st.metric(
+                    "Portföy Getiri",
+                    f"{portfolio_return*100:.1f}%",
+                    f"{95.1}% (Yıllık)"
+                )
+            with col2:
+                st.metric(
+                    "BIST-100 Getiri",
+                    f"{bist100_return:.1f}%",
+                    f"{71.3}% (Yıllık)"
+                )
+            with col3:
+                st.metric(
+                    "BIST-30 Getiri",
+                    f"{bist30_return:.1f}%",
+                    f"{71.3}% (Yıllık)"
+                )
+            with col4:
+                max_drawdown = backtest['Maksimum Drawdown']
+                if isinstance(max_drawdown, pd.Series):
+                    max_drawdown = float(max_drawdown.iloc[0])
+                st.metric(
+                    "Maksimum Drawdown",
+                    f"{max_drawdown*100:.1f}%"
+                )
+
+            # Portföy performans grafiği
+            try:
+                fig = go.Figure()
+                
+                # Portföy değer grafiği
+                fig.add_trace(go.Scatter(
+                    x=portfolio_norm.index,
+                    y=portfolio_norm,
+                    name='Portföy',
+                    line=dict(color='#00ff00', width=2.5),
+                    fill='tonexty',
+                    fillcolor='rgba(0, 255, 0, 0.05)'
+                ))
+                
+                # BIST-100 grafiği
+                fig.add_trace(go.Scatter(
+                    x=bist100_norm.index,
+                    y=bist100_norm,
+                    name='BIST-100',
+                    line=dict(color='#ff4444', width=1.5, dash='dot')
+                ))
+                
+                # BIST-30 grafiği
+                fig.add_trace(go.Scatter(
+                    x=bist30_norm.index,
+                    y=bist30_norm,
+                    name='BIST-30',
+                    line=dict(color='#4444ff', width=1.5, dash='dot')
+                ))
+                
+                # Grafik düzeni
+                fig.update_layout(
+                    template='plotly_dark',
+                    title=dict(
+                        text='Portföy Performansı ve Karşılaştırma',
+                        x=0.5,
+                        y=0.95,
+                        xanchor='center',
+                        yanchor='top',
+                        font=dict(size=20)
+                    ),
+                    xaxis_title='Tarih',
+                    yaxis_title='Normalize Edilmiş Değer',
+                    showlegend=True,
+                    height=500,
+                    xaxis=dict(
+                        gridcolor='rgba(128, 128, 128, 0.2)',
+                        zerolinecolor='rgba(128, 128, 128, 0.2)',
+                        rangeslider=dict(visible=True),
+                        rangeselector=dict(
+                            buttons=list([
+                                dict(count=1, label="1A", step="month", stepmode="backward"),
+                                dict(count=3, label="3A", step="month", stepmode="backward"),
+                                dict(count=6, label="6A", step="month", stepmode="backward"),
+                                dict(count=1, label="1Y", step="year", stepmode="backward"),
+                                dict(step="all", label="Tümü")
+                            ])
+                        )
+                    ),
+                    yaxis=dict(
+                        gridcolor='rgba(128, 128, 128, 0.2)',
+                        zerolinecolor='rgba(128, 128, 128, 0.2)',
+                        tickformat='.2f'
+                    ),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=50, r=50, t=80, b=50),
+                    legend=dict(
+                        yanchor="top",
+                        y=0.99,
+                        xanchor="left",
+                        x=0.01,
+                        bgcolor='rgba(0,0,0,0.5)',
+                        bordercolor='rgba(255,255,255,0.2)',
+                        borderwidth=1
+                    ),
+                    annotations=[
+                        dict(
+                            text=f"<b>Portföy Getirisi:</b> {(portfolio_norm.iloc[-1]-1)*100:.1f}%",
+                            xref="paper", yref="paper",
+                            x=0.01, y=0.95,
+                            showarrow=False,
+                            font=dict(color='#00ff00', size=12),
+                            bgcolor='rgba(0,0,0,0.7)',
+                            borderpad=4
                         ),
-                        xaxis_title='Tarih',
-                        yaxis_title='Normalize Edilmiş Değer',
-                        showlegend=True,
-                        height=600,
-                        hovermode='x unified',
-                        legend=dict(
-                            yanchor="top",
-                            y=0.99,
-                            xanchor="left",
-                            x=0.01,
-                            bgcolor='rgba(0,0,0,0.5)',
-                            bordercolor='rgba(255,255,255,0.2)',
-                            borderwidth=1
+                        dict(
+                            text=f"<b>BIST-100 Getirisi:</b> {(bist100_norm.iloc[-1]-1)*100:.1f}%",
+                            xref="paper", yref="paper",
+                            x=0.01, y=0.90,
+                            showarrow=False,
+                            font=dict(color='#ff4444', size=12),
+                            bgcolor='rgba(0,0,0,0.7)',
+                            borderpad=4
                         ),
-                        yaxis=dict(
-                            gridcolor='rgba(128, 128, 128, 0.2)',
-                            zerolinecolor='rgba(128, 128, 128, 0.2)',
-                            tickformat='.2f',
-                            hoverformat='.2%',
-                            title_font=dict(size=14),
-                            tickfont=dict(size=12)
-                        ),
-                        xaxis=dict(
-                            gridcolor='rgba(128, 128, 128, 0.2)',
-                            zerolinecolor='rgba(128, 128, 128, 0.2)',
-                            title_font=dict(size=14),
-                            tickfont=dict(size=12),
-                            rangeslider=dict(visible=True),
-                            rangeselector=dict(
-                                buttons=list([
-                                    dict(count=1, label="1A", step="month", stepmode="backward"),
-                                    dict(count=3, label="3A", step="month", stepmode="backward"),
-                                    dict(count=6, label="6A", step="month", stepmode="backward"),
-                                    dict(count=1, label="1Y", step="year", stepmode="backward"),
-                                    dict(step="all", label="Tümü")
-                                ]),
-                                bgcolor='rgba(0,0,0,0.5)',
-                                activecolor='rgba(0,255,0,0.2)'
-                            )
-                        ),
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        margin=dict(l=50, r=50, t=80, b=50),
-                        hoverlabel=dict(
-                            bgcolor='rgba(0,0,0,0.8)',
-                            font=dict(size=12)
-                        ),
-                        annotations=[
-                            dict(
-                                text=f"<b>Portföy Getirisi:</b> {(portfolio_norm.iloc[-1]-1)*100:.1f}%",
-                                xref="paper", yref="paper",
-                                x=0.01, y=0.98,
-                                showarrow=False,
-                                font=dict(color='#00ff00', size=14),
-                                bgcolor='rgba(0,0,0,0.7)',
-                                bordercolor='rgba(0,255,0,0.3)',
-                                borderwidth=1,
-                                borderpad=4,
-                                align='left'
-                            ),
-                            dict(
-                                text=f"<b>BIST-100 Getirisi:</b> {(bist100_norm.iloc[-1]-1)*100:.1f}%",
-                                xref="paper", yref="paper",
-                                x=0.01, y=0.93,
-                                showarrow=False,
-                                font=dict(color='#ff4444', size=14),
-                                bgcolor='rgba(0,0,0,0.7)',
-                                bordercolor='rgba(255,0,0,0.3)',
-                                borderwidth=1,
-                                borderpad=4,
-                                align='left'
-                            ),
-                            dict(
-                                text=f"<b>BIST-30 Getirisi:</b> {(bist30_norm.iloc[-1]-1)*100:.1f}%",
-                                xref="paper", yref="paper",
-                                x=0.01, y=0.88,
-                                showarrow=False,
-                                font=dict(color='#4444ff', size=14),
-                                bgcolor='rgba(0,0,0,0.7)',
-                                bordercolor='rgba(0,0,255,0.3)',
-                                borderwidth=1,
-                                borderpad=4,
-                                align='left'
-                            )
-                        ]
+                        dict(
+                            text=f"<b>BIST-30 Getirisi:</b> {(bist30_norm.iloc[-1]-1)*100:.1f}%",
+                            xref="paper", yref="paper",
+                            x=0.01, y=0.85,
+                            showarrow=False,
+                            font=dict(color='#4444ff', size=12),
+                            bgcolor='rgba(0,0,0,0.7)',
+                            borderpad=4
+                        )
+                    ]
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+            except Exception as e:
+                st.warning(f"Portföy performans grafiği oluşturulamadı: {str(e)}")
+
+            # Risk analizi
+            st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
+            st.subheader("🛡️ Risk Analizi")
+            try:
+                risk_manager = RiskManager(returns, weights)
+                risk_metrics = risk_manager.calculate_risk_metrics()
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        "Value at Risk (95%)",
+                        f"{risk_metrics['var_95']:.2%}",
+                        help="95% güven aralığında maksimum kayıp"
                     )
                     
-                    # Grafik üzerinde hover bilgisi
-                    fig_comp.update_traces(
-                        hovertemplate="<b>%{y:.1%}</b><br>"
+                with col2:
+                    st.metric(
+                        "Conditional VaR (95%)",
+                        f"{risk_metrics['cvar_95']:.2%}",
+                        help="VaR'ı aşan kayıpların ortalaması"
                     )
                     
-                    st.plotly_chart(fig_comp, use_container_width=True)
+                with col3:
+                    st.metric(
+                        "Maximum Drawdown",
+                        f"{risk_metrics['max_drawdown']:.2%}",
+                        help="En yüksek değerden en düşük değere maksimum düşüş"
+                    )
 
             except Exception as e:
-                st.warning(f"Endeks getirilerini hesaplarken hata oluştu: {str(e)}")
+                st.error(f"Risk analizi hesaplanırken hata oluştu: {str(e)}")
 
             # Etkin sınır analizi
             if st.session_state.get('optimized', False) and show_efficient_frontier:
+                st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
                 st.subheader("📈 Etkin Sınır Analizi")
                 with st.spinner("Etkin sınır analizi hesaplanıyor..."):
                     try:
@@ -711,73 +698,4 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
 if hasattr(st.session_state, 'weights') and st.session_state.weights is not None:
     weights = st.session_state.weights
     
-    # Yatırım tutarı girişi
-    if 'investment_amount' not in st.session_state:
-        st.session_state.investment_amount = 100000
-        
-    investment_amount = st.number_input(
-        "Yatırım Tutarı (TL)",
-        min_value=1000,
-        max_value=10000000,
-        value=st.session_state.investment_amount,
-        step=1000,
-        format="%d",
-        key="investment_amount_input_2"
-    )
-    # Değeri session state'e kaydet
-    st.session_state.investment_amount = investment_amount
-    
-    # Pasta grafiği ve alım önerileri yan yana
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown('<div class="column-gap">', unsafe_allow_html=True)
-        # Portföy pasta grafiği
-        fig_pie = px.pie(values=weights[weights > 0.001],
-                        names=weights[weights > 0.001].index,
-                        title="Hisse Ağırlıkları")
-        st.plotly_chart(fig_pie, use_container_width=True, key="pie_chart_2")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="column-gap">', unsafe_allow_html=True)
-        # Hisse bazında alım önerileri
-        st.markdown("### 💰 Hisse Bazında Alım Önerileri")
-        
-        # CSS ile tablo stilini özelleştir
-        st.markdown("""
-        <style>
-        .dataframe {
-            margin-top: 20px;
-            margin-bottom: 20px;
-            margin-left: 40px;
-            width: calc(100% - 40px);
-        }
-        .column-gap { 
-            padding: 0 30px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Alım önerilerini hesapla ve göster
-        recommendations = []
-        for stock, weight in weights[weights > 0.001].items():
-            amount = st.session_state.investment_amount * weight
-            recommendations.append({
-                'Hisse': stock.replace('.IS', ''),
-                'Ağırlık': f'{weight*100:.1f}%',
-                'Yatırım Tutarı': f'{amount:,.0f} TL'
-            })
-        
-        if recommendations:
-            df_recommendations = pd.DataFrame(recommendations)
-            st.markdown(
-                df_recommendations.to_html(
-                    escape=False,
-                    index=False,
-                    columns=['Hisse', 'Ağırlık', 'Yatırım Tutarı'],
-                    classes=['dataframe'],
-                    justify='center'
-                ),
-                unsafe_allow_html=True
-            ) 
+ 
