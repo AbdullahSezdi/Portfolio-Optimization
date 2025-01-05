@@ -102,3 +102,4 @@ print("Makroekonomik Etkiler:", risk_analysis['macro_impact'])
 ## Lisans
 
 Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın. 
+# Last updated: Sun Jan  5 22:35:47 +03 2025
