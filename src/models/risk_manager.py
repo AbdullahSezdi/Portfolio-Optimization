@@ -34,9 +34,12 @@ class RiskManager:
         Tüm risk metriklerini hesaplar.
         """
         return {
-            'var_95': self.calculate_var(0.95),
-            'cvar_95': self.calculate_cvar(0.95),
-            'max_drawdown': self.calculate_max_drawdown(),
+            'var_metrics': {
+                'var_95': self.calculate_var(0.95),
+                'var_99': self.calculate_var(0.99),
+                'cvar_95': self.calculate_cvar(0.95),
+                'cvar_99': self.calculate_cvar(0.99)
+            },
             'volatility': self.portfolio_returns.std() * np.sqrt(252),  # Yıllık volatilite
             'skewness': self.portfolio_returns.skew(),
             'kurtosis': self.portfolio_returns.kurtosis()

@@ -6,10 +6,19 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import yfinance as yf
 import investpy
+import logging
 
 from data.data_collector import DataCollector
 from models.portfolio_optimizer import PortfolioOptimizer
+from models.enhanced_risk_manager import EnhancedRiskManager
 from models.risk_manager import RiskManager
+
+# Logger yapılandırması
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Sayfa yapılandırması
 st.set_page_config(
@@ -222,138 +231,135 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
 
             # Portföy optimize et
             optimizer = PortfolioOptimizer(returns, risk_free_rate)
-            weights = optimizer.optimize_portfolio(
-                optimization_target=optimization_target,
-                max_weight=max_weight/100,
-                sector_limit=sector_limit/100,
-                min_stocks=min_stocks
-            )
-
-            # Ağırlıkları session state'e kaydet
-            st.session_state.weights = weights
-            
-            # Portföy dağılımını göster
-            st.subheader("📈 Optimal Portföy Dağılımı")
-            
-            # Yatırım tutarı girişi
-            if 'investment_amount' not in st.session_state:
-                st.session_state.investment_amount = 100000
+            try:
+                st.info("Optimizasyon başlatılıyor...")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
                 
-            investment_amount = st.number_input(
-                "Yatırım Tutarı (TL)",
-                min_value=1000,
-                max_value=10000000,
-                value=st.session_state.investment_amount,
-                step=1000,
-                format="%d",
-                key="investment_amount_input"
-            )
-            # Değeri session state'e kaydet
-            st.session_state.investment_amount = investment_amount
-            
-            # Pasta grafiği ve alım önerileri yan yana
-            col1, col2 = st.columns([1, 1])
-            
-            with col1:
-                st.markdown('<div class="column-gap">', unsafe_allow_html=True)
-                # Portföy pasta grafiği
-                fig_pie = px.pie(values=weights[weights > 0.001],
-                                names=weights[weights > 0.001].index,
-                                title="Hisse Ağırlıkları")
-                st.plotly_chart(fig_pie, use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown('<div class="column-gap">', unsafe_allow_html=True)
-                # Hisse bazında alım önerileri
-                st.markdown("### 💰 Hisse Bazında Alım Önerileri")
+                weights = optimizer.optimize_portfolio(
+                    optimization_target=optimization_target,
+                    max_weight=max_weight/100,
+                    sector_limit=sector_limit/100,
+                    min_stocks=min_stocks
+                )
                 
-                # CSS ile tablo stilini özelleştir
-                st.markdown("""
-                <style>
-                .dataframe {
-                    margin-top: 10px;
-                    margin-bottom: 10px;
-                    margin-left: 40px;
-                    width: calc(100% - 40px);
-                }
-                .column-gap { 
-                    padding: 0 15px;
-                }
-                /* Başlıklar arası boşluk */
-                h1, h2, h3, h4 {
-                    margin-top: 20px !important;
-                    margin-bottom: 10px !important;
-                    padding-top: 5px !important;
-                }
-                /* Bölümler arası boşluk */
-                .section-gap {
-                    margin-top: 25px !important;
-                    margin-bottom: 15px !important;
-                }
-                /* Metrikler arası boşluk */
-                .metrics-container {
-                    margin-top: 15px !important;
-                    margin-bottom: 15px !important;
-                }
-                /* Metrik kartları arası boşluk */
-                .stMetric {
-                    margin-top: 5px !important;
-                    margin-bottom: 5px !important;
-                }
-                /* Markdown içerik boşlukları */
-                .markdown-text-container {
-                    margin-top: 10px !important;
-                    margin-bottom: 10px !important;
-                }
-                .markdown-text-container p {
-                    margin-top: 5px !important;
-                    margin-bottom: 5px !important;
-                }
-                </style>
-                """, unsafe_allow_html=True)
+                if weights is None:
+                    st.error("Optimizasyon başarısız oldu. Lütfen farklı parametreler deneyin.")
+                    st.stop()
                 
-                # Alım önerilerini hesapla ve göster
-                recommendations = []
-                for stock, weight in weights[weights > 0.001].items():
-                    amount = st.session_state.investment_amount * weight
-                    recommendations.append({
-                        'Hisse': stock.replace('.IS', ''),
-                        'Ağırlık': f'{weight*100:.1f}%',
-                        'Yatırım Tutarı': f'{amount:,.0f} TL'
-                    })
+                # Portföy metriklerini hesapla
+                metrics = optimizer.calculate_portfolio_metrics(weights)
+                risk_manager = RiskManager(returns, weights)
+                risk_metrics = risk_manager.calculate_risk_metrics()
                 
-                if recommendations:
-                    df_recommendations = pd.DataFrame(recommendations)
-                    st.markdown(
-                        df_recommendations.to_html(
-                            escape=False,
-                            index=False,
-                            columns=['Hisse', 'Ağırlık', 'Yatırım Tutarı'],
-                            classes=['dataframe'],
-                            justify='center'
-                        ),
-                        unsafe_allow_html=True
+                # Detaylı sonuçları göster
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        "Yıllık Getiri",
+                        f"{metrics['Yıllık Getiri']:.1%}",
                     )
-
-            # Sonuçları göster
-            st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
-            st.header("📊 Optimizasyon Sonuçları")
-            
-            # Portföy metriklerini göster
-            st.markdown('<div class="metrics-container">', unsafe_allow_html=True)
-            metrics = optimizer.calculate_portfolio_metrics(weights)
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Yıllık Getiri", f"{metrics['Yıllık Getiri']:.1%}")
-            with col2:
-                st.metric("Yıllık Volatilite", f"{metrics['Yıllık Volatilite']:.1%}")
-            with col3:
-                st.metric("Sharpe Oranı", f"{metrics['Sharpe Oranı']:.2f}")
-            with col4:
-                st.metric("Sortino Oranı", f"{metrics['Sortino Oranı']:.2f}")
-            st.markdown('</div>', unsafe_allow_html=True)
+                    st.metric(
+                        "Value at Risk (95%)",
+                        f"{risk_metrics['var_metrics']['var_95']:.1%}",
+                    )
+                
+                with col2:
+                    st.metric(
+                        "Yıllık Volatilite",
+                        f"{risk_metrics['volatility']:.1%}",
+                    )
+                    st.metric(
+                        "Conditional VaR (95%)",
+                        f"{risk_metrics['var_metrics']['cvar_95']:.1%}",
+                    )
+                
+                with col3:
+                    st.metric(
+                        "Sharpe Oranı",
+                        f"{metrics['Sharpe Oranı']:.2f}",
+                    )
+                    st.metric(
+                        "Çarpıklık",
+                        f"{risk_metrics['skewness']:.2f}",
+                    )
+                
+                # Aktif pozisyonları göster
+                active_positions = weights[weights > 0.01]
+                st.subheader("📊 Portföy Dağılımı")
+                
+                # Pasta grafik
+                fig = go.Figure(data=[go.Pie(
+                    labels=active_positions.index,
+                    values=active_positions.values,
+                    textinfo='label+percent',
+                    hovertemplate="Hisse: %{label}<br>Ağırlık: %{percent}<extra></extra>"
+                )])
+                
+                fig.update_layout(
+                    showlegend=True,
+                    height=400,
+                    margin=dict(l=0, r=0, t=30, b=0)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Detaylı pozisyon tablosu
+                st.subheader("💼 Hisse Bazında Alım Önerileri")
+                position_df = pd.DataFrame({
+                    'Hisse': active_positions.index,
+                    'Ağırlık': active_positions.values,
+                    'Yatırım Tutarı': active_positions.values * 100000  # 100,000 TL varsayılan portföy büyüklüğü
+                })
+                
+                position_df['Ağırlık'] = position_df['Ağırlık'].map('{:.1%}'.format)
+                position_df['Yatırım Tutarı'] = position_df['Yatırım Tutarı'].map('{:,.0f} TL'.format)
+                
+                st.dataframe(
+                    position_df,
+                    column_config={
+                        "Hisse": st.column_config.TextColumn("Hisse"),
+                        "Ağırlık": st.column_config.TextColumn("Ağırlık"),
+                        "Yatırım Tutarı": st.column_config.TextColumn("Yatırım Tutarı")
+                    },
+                    hide_index=True
+                )
+                
+                # Risk analizi
+                if st.checkbox("🔍 Detaylı Risk Analizi Göster"):
+                    st.subheader("📊 Risk Analizi")
+                    risk_manager = EnhancedRiskManager(
+                        returns=returns,
+                        weights=weights,
+                        market_returns=None,
+                        risk_free_rate=risk_free_rate
+                    )
+                    
+                    risk_metrics = risk_manager.calculate_advanced_risk_metrics()
+                    if risk_metrics:
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write("📈 Momentum Göstergeleri")
+                            momentum = risk_metrics['momentum']
+                            for period, value in momentum.items():
+                                st.metric(f"{period} Momentum", f"{value:.1%}")
+                        
+                        with col2:
+                            st.write("📊 Volatilite Göstergeleri")
+                            volatility = risk_metrics['volatility']
+                            for metric, value in volatility.items():
+                                if metric == 'trend':
+                                    st.metric("Volatilite Trendi", f"{value:.1%}")
+                                else:
+                                    st.metric(f"{metric.title()} Volatilite", f"{value:.1%}")
+                
+            except Exception as e:
+                st.error(f"Optimizasyon sırasında bir hata oluştu: {str(e)}")
+                st.warning("Lütfen farklı parametreler deneyin veya veri setini kontrol edin.")
+                st.info("Hata detayları için loglara bakın.")
+                logger.error(f"Optimization error: {str(e)}", exc_info=True)
 
             # Backtest sonuçları
             st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
@@ -571,34 +577,72 @@ if st.sidebar.button("🎯 Portföy Optimize Et"):
             st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
             st.subheader("🛡️ Risk Analizi")
             try:
+                # Temel risk metrikleri
                 risk_manager = RiskManager(returns, weights)
-                risk_metrics = risk_manager.calculate_risk_metrics()
+                basic_risk_metrics = risk_manager.calculate_risk_metrics()
                 
+                # VaR Metrikleri
                 col1, col2, col3 = st.columns(3)
-                
                 with col1:
                     st.metric(
                         "Value at Risk (95%)",
-                        f"{risk_metrics['var_95']:.2%}",
-                        help="95% güven aralığında maksimum kayıp"
+                        f"{basic_risk_metrics['var_metrics']['var_95']:.2%}",
+                        help="95% güven aralığında VaR"
                     )
-                    
                 with col2:
                     st.metric(
                         "Conditional VaR (95%)",
-                        f"{risk_metrics['cvar_95']:.2%}",
-                        help="VaR'ı aşan kayıpların ortalaması"
+                        f"{basic_risk_metrics['var_metrics']['cvar_95']:.2%}",
+                        help="95% güven aralığında CVaR"
                     )
-                    
                 with col3:
                     st.metric(
-                        "Maximum Drawdown",
-                        f"{risk_metrics['max_drawdown']:.2%}",
-                        help="En yüksek değerden en düşük değere maksimum düşüş"
+                        "Volatilite",
+                        f"{basic_risk_metrics['volatility']:.2%}",
+                        help="Yıllık volatilite"
                     )
 
+                # Gelişmiş risk analizi
+                if st.checkbox("🔍 Gelişmiş Risk Analizi Göster"):
+                    try:
+                        enhanced_risk_manager = EnhancedRiskManager(
+                            returns=returns,
+                            weights=weights,
+                            market_returns=None,
+                            risk_free_rate=risk_free_rate/100
+                        )
+                        
+                        advanced_metrics = enhanced_risk_manager.calculate_advanced_risk_metrics()
+                        if advanced_metrics:
+                            st.markdown("#### 📈 Gelişmiş Metrikler")
+                            
+                            # Momentum göstergeleri
+                            if 'momentum' in advanced_metrics:
+                                st.markdown("##### Momentum Göstergeleri")
+                                cols = st.columns(len(advanced_metrics['momentum']))
+                                for col, (period, value) in zip(cols, advanced_metrics['momentum'].items()):
+                                    with col:
+                                        st.metric(f"{period} Momentum", f"{value:.1%}")
+                            
+                            # Makroekonomik etki
+                            macro_impact = enhanced_risk_manager.calculate_macro_impact()
+                            if macro_impact:
+                                st.markdown("##### 🌍 Makroekonomik Etki")
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("Döviz Hassasiyeti", f"{macro_impact.get('FX_SENSITIVITY', 0):.2f}")
+                                with col2:
+                                    st.metric("Piyasa Betası", f"{macro_impact.get('MARKET_BETA', 1):.2f}")
+                                with col3:
+                                    st.metric("Faiz Hassasiyeti", f"{macro_impact.get('RATE_SENSITIVITY', 0):.2f}")
+                    
+                    except Exception as e:
+                        logger.error(f"Gelişmiş risk analizi hesaplanırken hata: {str(e)}")
+                        st.warning("Gelişmiş risk metrikleri hesaplanamadı. Temel risk metrikleriyle devam ediliyor.")
+
             except Exception as e:
-                st.error(f"Risk analizi hesaplanırken hata oluştu: {str(e)}")
+                logger.error(f"Risk analizi hesaplanırken hata: {str(e)}")
+                st.error("Risk analizi hesaplanırken bir hata oluştu. Lütfen veri setini kontrol edin.")
 
             # Etkin sınır analizi
             if st.session_state.get('optimized', False) and show_efficient_frontier:

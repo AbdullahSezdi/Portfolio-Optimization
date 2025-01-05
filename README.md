@@ -1,160 +1,104 @@
-# Portföy Optimizasyonu Projesi
+# Gelişmiş Portföy Optimizasyonu
 
-## Proje Hakkında
-Bu proje, modern portföy teorisi ve yapay zeka tekniklerini kullanarak optimal yatırım portföyü oluşturmayı amaçlamaktadır. Markowitz'in Modern Portföy Teorisi temel alınarak, yapay zeka ve makine öğrenimi teknikleri ile geliştirilmiş bir portföy optimizasyon sistemi oluşturulacaktır.
+Bu proje, modern portföy teorisi ve gelişmiş risk yönetimi tekniklerini kullanarak optimal portföy oluşturma sürecini otomatize eder.
 
-## Teknik Gereksinimler
-- Python 3.8+
-- NumPy
-- Pandas
-- Scikit-learn
-- PyTorch
-- Yfinance
-- Plotly
-- SciPy
-
-## Proje Adımları
+## Özellikler
 
 ### 1. Veri Toplama ve Ön İşleme
-- **Veri Kaynakları:**
-  - Yahoo Finance API (yfinance) kullanarak hisse senedi verilerinin çekilmesi
-  - Finansal göstergelerin toplanması
-  - Piyasa endeks verilerinin elde edilmesi
-
-- **Veri Ön İşleme:**
-  - Eksik verilerin temizlenmesi
-  - Aykırı değerlerin tespiti ve işlenmesi
-  - Verilerin normalize edilmesi
-  - Teknik göstergelerin hesaplanması (RSI, MACD, vb.)
+- Yahoo Finance API üzerinden otomatik veri toplama
+- Getirilerin hesaplanması (basit/logaritmik)
+- Teknik göstergelerin hesaplanması (SMA, RSI, vb.)
 
 ### 2. Risk ve Getiri Analizi
-- Tarihsel getiri hesaplamaları
-- Volatilite analizi
-- Kovaryans matrisinin oluşturulması
-- Sharpe oranı hesaplaması
-- Beta katsayısı analizi
+- Gelişmiş risk metrikleri:
+  - Value at Risk (VaR) - Tarihsel, Parametrik ve Monte Carlo
+  - Expected Shortfall (CVaR)
+  - Maksimum Drawdown
+  - Volatilite analizi
+  - Kuyruk riski metrikleri
+- Makroekonomik faktör analizi:
+  - Döviz kuru hassasiyeti
+  - Faiz oranı hassasiyeti
+  - Piyasa betası
 
-### 3. Portföy Optimizasyon Modelleri
-- **Klasik Optimizasyon:**
-  - Markowitz Ortalama-Varyans Optimizasyonu
-  - Minimum Varyans Portföyü
-  - Maksimum Sharpe Oranı Portföyü
+### 3. Portföy Optimizasyonu
+- Farklı optimizasyon hedefleri:
+  - Maksimum Sharpe Oranı
+  - Minimum Volatilite
+  - Maksimum Sortino Oranı
+- Kısıtlamalar:
+  - Maksimum hisse ağırlığı
+  - Sektör limitleri
+  - Minimum hisse sayısı
+- Risk limitleri:
+  - VaR limiti
+  - Expected Shortfall limiti
 
-- **Yapay Zeka Tabanlı Optimizasyon:**
-  - Derin Öğrenme Modelleri (LSTM, GRU)
-  - Gradient Boosting Algoritmaları
-  - Monte Carlo Simülasyonları
-
-### 4. Risk Yönetimi
-- VaR (Value at Risk) hesaplaması
-- CVaR (Conditional Value at Risk) analizi
-- Stres testleri
-- Senaryo analizleri
-
-### 5. Model Değerlendirme ve Backtesting
-- Out-of-sample testleri
-- Çapraz doğrulama
-- Performans metrikleri hesaplama
-- Backtest sonuçlarının analizi
-
-### 6. Görselleştirme ve Raporlama
-- Etkin sınır (Efficient Frontier) grafikleri
-- Portföy performans grafikleri
-- Risk-getiri dağılım grafikleri
-- Interaktif dashboard oluşturma
-
-## Proje Yapısı
-```
-portfolio_optimization/
-├── data/
-│   ├── raw/
-│   └── processed/
-├── models/
-│   ├── classical/
-│   └── ai_models/
-├── notebooks/
-│   ├── 1_data_collection.ipynb
-│   ├── 2_preprocessing.ipynb
-│   ├── 3_model_development.ipynb
-│   └── 4_evaluation.ipynb
-├── src/
-│   ├── data/
-│   ├── features/
-│   ├── models/
-│   └── visualization/
-├── tests/
-├── requirements.txt
-└── README.md
-```
+### 4. Performans ve Güvenilirlik
+- Numba ile hızlandırılmış hesaplamalar
+- Önbellekleme ve bellek optimizasyonu
+- Kapsamlı hata yönetimi
+- Detaylı loglama
 
 ## Kurulum
-1. Gerekli Python paketlerinin kurulumu:
+
 ```bash
+# Gerekli paketleri yükle
 pip install -r requirements.txt
 ```
 
-2. Veri kaynaklarının yapılandırılması
-3. Modellerin eğitilmesi
-4. Backtesting ve optimizasyon
-
 ## Kullanım
-1. Veri toplama scriptlerinin çalıştırılması
-2. Model eğitimi
-3. Portföy optimizasyonu
-4. Sonuçların görselleştirilmesi
 
-## Önemli Notlar
-- Finansal veriler günlük olarak güncellenmeli
-- Risk parametreleri düzenli olarak kalibre edilmeli
-- Model performansı sürekli izlenmeli
-- Piyasa koşullarına göre parametreler güncellenmelidir
+```python
+from src.data.data_collector import DataCollector
+from src.models.portfolio_optimizer import PortfolioOptimizer
+from src.models.enhanced_risk_manager import EnhancedRiskManager
 
-## Gelecek Geliştirmeler
-- Gerçek zamanlı veri entegrasyonu
-- Duygu analizi entegrasyonu
-- Blockchain entegrasyonu
-- Otomatik alım-satım stratejileri 
+# Veri topla
+collector = DataCollector()
+data = collector.fetch_stock_data(symbols=['THYAO.IS', 'GARAN.IS'], 
+                                start_date='2022-01-01', 
+                                end_date='2023-12-31')
 
-## Final Ürün ve Özellikleri
+# Portföy optimize edici oluştur
+optimizer = PortfolioOptimizer(
+    returns_data=data,
+    market_returns=market_data,
+    risk_free_rate=0.15
+)
 
-### 1. Interaktif Web Arayüzü
-- Modern ve kullanıcı dostu dashboard
-- Portföy performansının gerçek zamanlı takibi
-- Özelleştirilebilir grafik ve tablolar
-- Mobil uyumlu tasarım
+# Risk limitleri tanımla
+risk_constraints = {
+    'var_95': 0.02,  # Maksimum %2 VaR
+    'expected_shortfall': 0.025  # Maksimum %2.5 Expected Shortfall
+}
 
-### 2. Portföy Analiz Araçları
-- Risk-getiri analiz raporları
-- Portföy çeşitlendirme önerileri
-- Otomatik rebalancing tavsiyeleri
-- Tarihsel performans analizleri
+# Optimizasyon yap
+optimal_weights, risk_analysis = optimizer.optimize_portfolio(
+    optimization_target="Maksimum Sharpe Oranı",
+    max_weight=0.2,
+    sector_limit=0.3,
+    min_stocks=5,
+    risk_constraints=risk_constraints
+)
 
-### 3. Yapay Zeka Destekli Özellikler
-- Gelecek trend tahminleri
-- Optimal portföy ağırlıkları önerileri
-- Risk uyarı sistemi
-- Anomali tespiti ve uyarıları
+# Risk raporunu incele
+print("Risk Analizi:")
+print("VaR Metrikleri:", risk_analysis['var_metrics'])
+print("Expected Shortfall:", risk_analysis['expected_shortfall'])
+print("Kuyruk Riski:", risk_analysis['tail_risk'])
+print("Stres Testi Sonuçları:", risk_analysis['stress_test'])
+print("Makroekonomik Etkiler:", risk_analysis['macro_impact'])
+```
 
-### 4. Raporlama Sistemi
-- PDF formatında detaylı portföy raporları
-- Haftalık/aylık performans özetleri
-- Vergi raporlaması için gerekli dökümanlar
-- Özelleştirilebilir rapor şablonları
+## Katkıda Bulunma
 
-### 5. Veri Entegrasyonu
-- Gerçek zamanlı piyasa verileri
-- Ekonomik göstergeler ve haberler
-- Teknik analiz göstergeleri
-- Temel analiz metrikleri
+1. Fork yapın
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Add some amazing feature'`)
+4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
+5. Pull Request açın
 
-### 6. Risk Yönetimi Araçları
-- Stop-loss önerileri
-- Portföy sigorta stratejileri
-- Stres testi senaryoları
-- Risk limiti uyarıları
+## Lisans
 
-### 7. Kullanıcı Yönetimi
-- Çoklu portföy yönetimi
-- Kişiselleştirilmiş risk profili
-- Yatırım hedefi takibi
-- Performans karşılaştırma araçları 
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın. 
